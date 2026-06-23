@@ -42,14 +42,19 @@ def ejecutar_transaccion(accion, datos):
             cursor.execute("SELECT empl_cargo_ID, empl_dpto_ID FROM EMPLEADOS WHERE empl_ID = %s;", (datos['id'],))
             emp = cursor.fetchone()
             if emp:
-                # Insertamos en histórico (usando un ID aleatorio para el ejemplo, ej: 10 + id)
+                # CORRECCIÓN: Consultamos el ID más alto del histórico y le sumamos 1
+                cursor.execute("SELECT COALESCE(MAX(emphist_ID), 0) + 1 FROM HISTORICO;")
+                nuevo_id_historico = cursor.fetchone()[0]
+                
+                # Insertamos en histórico usando el ID dinámico y seguro
                 cursor.execute("""
                     INSERT INTO HISTORICO (emphist_ID, emphist_fecha_retiro, emphist_cargo_ID, emphist_dpto_ID, emphist_empl_ID) 
                     VALUES (%s, CURRENT_DATE, %s, %s, %s);
-                """, (10 + int(datos['id']), emp[0], emp[1], datos['id']))
+                """, (nuevo_id_historico, emp[0], emp[1], datos['id']))
+                
                 # Marcamos como borrado
                 cursor.execute("UPDATE EMPLEADOS SET estado = 'Borrado' WHERE empl_ID = %s;", (datos['id'],))
-                mensaje = f"Transacción completa: Empleado {datos['id']} retirado y guardado en histórico."
+                mensaje = f"Transacción completa: Empleado {datos['id']} retirado y guardado en histórico con ID {nuevo_id_historico}."
             else:
                 mensaje = "Error: Empleado no existe."
                 
